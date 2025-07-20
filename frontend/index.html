@@ -2,62 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ResumeRev.AI</title>
+  <title>ResumeRev.AI – AI Resume Rewriter</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>ResumeRev.AI</h1>
-  <p>Paste your resume or upload a .txt file. Add the job description, and we’ll tailor your resume using AI.</p>
+  <p>Paste your resume and a job description below. We'll tailor your resume using AI to match the job requirements.</p>
 
   <form id="resumeForm">
     <label for="resume">Your Resume:</label><br />
-    <textarea id="resume" rows="10" cols="60" required></textarea><br />
-
-    <!-- 📁 Upload Resume File -->
-    <label for="resumeUpload">Or upload a .txt resume:</label><br />
-    <input type="file" id="resumeUpload" accept=".txt" /><br /><br />
+    <textarea id="resume" rows="10" cols="60" placeholder="Paste your resume here..." required></textarea><br />
 
     <label for="job">Job Description:</label><br />
-    <textarea id="job" rows="10" cols="60" required></textarea><br />
+    <textarea id="job" rows="10" cols="60" placeholder="Paste the job description here..." required></textarea><br />
 
     <button type="submit">Rewrite Resume</button>
   </form>
 
-  <h2>Rewritten Resume:</h2>
+  <h2>🔄 Rewritten Resume</h2>
   <pre id="output"></pre>
 
   <script>
-    // Handle resume form submission
-    document.getElementById("resumeForm").addEventListener("submit", async function (e) {
+    const form = document.getElementById("resumeForm");
+    const output = document.getElementById("output");
+
+    form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      const resume = document.getElementById("resume").value;
-      const job = document.getElementById("job").value;
 
-      const res = await fetch("/api/rewrite-resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, job })
-      });
+      const resume = document.getElementById("resume").value.trim();
+      const job = document.getElementById("job").value.trim();
 
-      const data = await res.json();
-      document.getElementById("output").textContent = data.improvedResume || data.error;
-    });
-
-    // Handle resume upload
-    document.getElementById("resumeUpload").addEventListener("change", function () {
-      const file = this.files[0];
-      if (!file) return;
-
-      if (file.type !== "text/plain") {
-        alert("Please upload a .txt file");
+      if (!resume || !job) {
+        output.textContent = "⚠️ Please provide both resume and job description.";
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        document.getElementById("resume").value = e.target.result;
-      };
-      reader.readAsText(file);
+      output.textContent = "⏳ Rewriting your resume... Please wait.";
+
+      try {
+        const res = await fetch("/api/rewrite-resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resume, job })
+        });
+
+        const data = await res.json();
+
+        if (data.improvedResume) {
+          output.textContent = data.improvedResume;
+        } else {
+          output.textContent = `❌ Error: ${data.error || "Something went wrong."}`;
+        }
+      } catch (err) {
+        output.textContent = "❌ Failed to connect to the server.";
+        console.error(err);
+      }
     });
   </script>
 </body>
