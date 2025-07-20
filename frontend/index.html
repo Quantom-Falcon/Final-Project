@@ -13,6 +13,10 @@
     <label for="resume">Your Resume:</label><br />
     <textarea id="resume" rows="10" cols="60" placeholder="Paste your resume here..." required></textarea><br />
 
+    <!-- 📁 Upload Resume File -->
+    <label for="resumeUpload">Or upload a .txt resume:</label><br />
+    <input type="file" id="resumeUpload" accept=".txt" /><br /><br />
+
     <label for="job">Job Description:</label><br />
     <textarea id="job" rows="10" cols="60" placeholder="Paste the job description here..." required></textarea><br />
 
@@ -57,6 +61,23 @@
         output.textContent = "❌ Failed to connect to the server.";
         console.error(err);
       }
+    });
+
+    // Resume file upload logic
+    document.getElementById("resumeUpload").addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      if (file.type !== "text/plain") {
+        alert("Please upload a .txt file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById("resume").value = e.target.result;
+      };
+      reader.readAsText(file);
     });
   </script>
 </body>
