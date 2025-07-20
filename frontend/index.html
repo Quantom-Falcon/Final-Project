@@ -7,11 +7,15 @@
 </head>
 <body>
   <h1>ResumeRev.AI</h1>
-  <p>Paste your resume and a job description to rewrite it for the job.</p>
+  <p>Paste your resume or upload a .txt file. Add the job description, and we’ll tailor your resume using AI.</p>
 
   <form id="resumeForm">
     <label for="resume">Your Resume:</label><br />
     <textarea id="resume" rows="10" cols="60" required></textarea><br />
+
+    <!-- 📁 Upload Resume File -->
+    <label for="resumeUpload">Or upload a .txt resume:</label><br />
+    <input type="file" id="resumeUpload" accept=".txt" /><br /><br />
 
     <label for="job">Job Description:</label><br />
     <textarea id="job" rows="10" cols="60" required></textarea><br />
@@ -23,6 +27,7 @@
   <pre id="output"></pre>
 
   <script>
+    // Handle resume form submission
     document.getElementById("resumeForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       const resume = document.getElementById("resume").value;
@@ -36,6 +41,23 @@
 
       const data = await res.json();
       document.getElementById("output").textContent = data.improvedResume || data.error;
+    });
+
+    // Handle resume upload
+    document.getElementById("resumeUpload").addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      if (file.type !== "text/plain") {
+        alert("Please upload a .txt file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById("resume").value = e.target.result;
+      };
+      reader.readAsText(file);
     });
   </script>
 </body>
