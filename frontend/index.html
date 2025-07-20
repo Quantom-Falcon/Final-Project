@@ -4,23 +4,84 @@
   <meta charset="UTF-8" />
   <title>ResumeRev.AI – AI Resume Rewriter</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px auto;
+      max-width: 800px;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+
+    form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+
+    textarea {
+      width: 100%;
+      font-family: monospace;
+      margin-top: 6px;
+      margin-bottom: 20px;
+      padding: 10px;
+      resize: vertical;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+    }
+
+    input[type="file"] {
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #spinner {
+      display: none;
+      margin-top: 10px;
+      font-style: italic;
+      color: #555;
+    }
+
+    pre {
+      background: #eee;
+      padding: 15px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
   <h1>ResumeRev.AI</h1>
-  <p>Paste your resume and a job description below. We'll tailor your resume using AI to match the job requirements.</p>
+  <p>Use AI to rewrite your resume for any job — upload or paste your resume below.</p>
 
   <form id="resumeForm">
-    <label for="resume">Your Resume:</label><br />
-    <textarea id="resume" rows="10" cols="60" placeholder="Paste your resume here..." required></textarea><br />
+    <label for="resume">Your Resume:</label>
+    <textarea id="resume" rows="10" placeholder="Paste your resume here..." required></textarea>
 
-    <!-- 📁 Upload Resume File -->
-    <label for="resumeUpload">Or upload a .txt resume:</label><br />
-    <input type="file" id="resumeUpload" accept=".txt" /><br /><br />
+    <label for="resumeUpload">Or upload a .txt resume:</label>
+    <input type="file" id="resumeUpload" accept=".txt" />
 
-    <label for="job">Job Description:</label><br />
-    <textarea id="job" rows="10" cols="60" placeholder="Paste the job description here..." required></textarea><br />
+    <label for="job">Job Description:</label>
+    <textarea id="job" rows="10" placeholder="Paste the job description here..." required></textarea>
 
     <button type="submit">Rewrite Resume</button>
+    <div id="spinner">⏳ Rewriting your resume... Please wait.</div>
   </form>
 
   <h2>🔄 Rewritten Resume</h2>
@@ -29,6 +90,7 @@
   <script>
     const form = document.getElementById("resumeForm");
     const output = document.getElementById("output");
+    const spinner = document.getElementById("spinner");
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -41,7 +103,8 @@
         return;
       }
 
-      output.textContent = "⏳ Rewriting your resume... Please wait.";
+      spinner.style.display = "block";
+      output.textContent = "";
 
       try {
         const res = await fetch("/api/rewrite-resume", {
@@ -51,6 +114,7 @@
         });
 
         const data = await res.json();
+        spinner.style.display = "none";
 
         if (data.improvedResume) {
           output.textContent = data.improvedResume;
@@ -58,12 +122,13 @@
           output.textContent = `❌ Error: ${data.error || "Something went wrong."}`;
         }
       } catch (err) {
+        spinner.style.display = "none";
         output.textContent = "❌ Failed to connect to the server.";
         console.error(err);
       }
     });
 
-    // Resume file upload logic
+    // Handle .txt file upload
     document.getElementById("resumeUpload").addEventListener("change", function () {
       const file = this.files[0];
       if (!file) return;
