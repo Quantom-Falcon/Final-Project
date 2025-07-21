@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
 const { OpenAI } = require('openai');
 
 const app = express();
@@ -7,7 +9,10 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Initialize OpenAI client only if key is set
+// Setup multer for in-memory PDF upload
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Initialize OpenAI client if API key is present
 const apiKey = process.env.OPENAI_API_KEY;
 let openai = null;
 
@@ -18,56 +23,69 @@ if (apiKey && apiKey.startsWith("sk-")) {
   console.log("⚠️ OpenAI API key is missing or invalid. GPT calls will be skipped.");
 }
 
-// ------------------------------------
-// 🤖 Rewrite Resume Endpoint
-// ------------------------------------
-app.post('/api/rewrite-resume', async (req, res) => {
-  const { resume, job } = req.body;
+// ----------------------------------------
+// 📄 Upload PDF Resume + Analyze with GPT
+// ----------------------------------------
+app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => {
+  const file = req.file;
+  const job = req.body.jobDescription;
 
-  if (!resume || !job) {
-    return res.status(400).json({ error: "Missing resume or job description." });
-  }
-
-  // Use mock response if OpenAI is not configured
-  if (!openai) {
-    console.log("⚠️ OpenAI client not initialized. Returning mock response.");
-    return res.json({
-      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`
-    });
+  if (!file || !job) {
+    return res.status(400).json({ error: "Missing PDF file or job description." });
   }
 
   try {
-    console.log("📤 Sending prompt to OpenAI...");
+    const pdfText = await pdfParse(file.buffer);
+    const resume = pdfText.text;
+
+    // If OpenAI is not configured, return mock response
+    if (!openai) {
+      return res.json({
+        improvedResume: resume,
+        score: 50,
+        improvements: ["Mock: No clear formatting", "Mock: Skills are vague"],
+        suggestions: ["Mock: Add project bullet points", "Mock: Quantify accomplishments"]
+      });
+    }
 
     const prompt = `
-You are an AI resume assistant. Rewrite the following resume to better match the job description.
-Focus on keyword alignment, skill enhancement, and phrasing.
-Keep the original experiences but make it more relevant and compelling.
+You are an AI resume reviewer. Your job is to analyze and rewrite resumes.
+
+Instructions:
+1. Rewrite the resume to better match the job description.
+2. Score the original resume from 0–100.
+3. List 3 areas needing improvement.
+4. Give 3 specific suggestions to improve the resume.
+
+Respond in this exact JSON format:
+{
+  "improvedResume": "...rewritten resume here...",
+  "score": 85,
+  "improvements": ["item 1", "item 2", "item 3"],
+  "suggestions": ["tip 1", "tip 2", "tip 3"]
+}
 
 Resume:
 ${resume}
 
 Job Description:
 ${job}
-
-Rewritten Resume:
 `;
 
-    const completion = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 1500
     });
 
-    const improvedResume = completion.choices[0].message.content.trim();
+    const jsonOutput = JSON.parse(response.choices[0].message.content.trim());
 
-    console.log("✅ OpenAI returned improved resume.");
-    res.json({ improvedResume });
+    res.json(jsonOutput);
 
-  } catch (error) {
-    console.error("❌ OpenAI error:", error);
-    res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
+  } catch (err) {
+    console.error("❌ Error processing resume upload:", err);
+    res.status(500).json({ error: "Failed to process and analyze the uploaded resume." });
   }
 });
 
