@@ -1,31 +1,3 @@
-const express = require('express');
-const path = require('path');
-const multer = require('multer');
-const pdfParse = require('pdf-parse');
-const { OpenAI } = require('openai');
-
-const app = express();
-
-app.use(express.static(path.join(__dirname, 'frontend')));
-app.use(express.json());
-
-// Setup multer for in-memory PDF upload
-const upload = multer({ storage: multer.memoryStorage() });
-
-// Initialize OpenAI client if API key is present
-const apiKey = process.env.OPENAI_API_KEY;
-let openai = null;
-
-if (apiKey && apiKey.startsWith("sk-")) {
-  openai = new OpenAI({ apiKey });
-  console.log("✅ OpenAI API key loaded");
-} else {
-  console.log("⚠️ OpenAI API key is missing or invalid. GPT calls will be skipped.");
-}
-
-// ----------------------------------------
-// 📄 Upload PDF Resume + Analyze with GPT
-// ----------------------------------------
 app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => {
   const file = req.file;
   const job = req.body.jobDescription;
@@ -35,16 +7,24 @@ app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => 
   }
 
   try {
-    const pdfText = await pdfParse(file.buffer);
-    const resume = pdfText.text;
+    const pdfData = await pdfParse(file.buffer);
+    const resume = pdfData.text?.trim();
 
-    // If OpenAI is not configured, return mock response
+    if (!resume || resume.length < 30) {
+      return res.status(400).json({ error: "Resume text could not be extracted or is too short." });
+    }
+
+    // If OpenAI is not configured, return mock data
     if (!openai) {
       return res.json({
-        improvedResume: resume,
-        score: 50,
-        improvements: ["Mock: No clear formatting", "Mock: Skills are vague"],
-        suggestions: ["Mock: Add project bullet points", "Mock: Quantify accomplishments"]
+        improvedResume: `${resume}\n\n[MOCK: tailored for job: ${job.slice(0, 60)}...]`,
+        score: 72,
+        improvements: ["Too few action verbs", "Not tailored to job keywords"],
+        suggestions: [
+          "Include skills from job posting in bullet points",
+          "Quantify past achievements (e.g., 'Increased conversions by 20%')",
+          "Shorten summary to 2–3 strong lines"
+        ]
       });
     }
 
@@ -59,10 +39,10 @@ Instructions:
 
 Respond in this exact JSON format:
 {
-  "improvedResume": "...rewritten resume here...",
+  "improvedResume": "...",
   "score": 85,
-  "improvements": ["item 1", "item 2", "item 3"],
-  "suggestions": ["tip 1", "tip 2", "tip 3"]
+  "improvements": ["...", "..."],
+  "suggestions": ["...", "..."]
 }
 
 Resume:
@@ -79,14 +59,14 @@ ${job}
       max_tokens: 1500
     });
 
-    const jsonOutput = JSON.parse(response.choices[0].message.content.trim());
+    // Try to parse the JSON returned by GPT
+    const content = response.choices[0].message.content.trim();
+    const jsonOutput = JSON.parse(content);
 
-    res.json(jsonOutput);
+    return res.json(jsonOutput);
 
   } catch (err) {
-    console.error("❌ Error processing resume upload:", err);
-    res.status(500).json({ error: "Failed to process and analyze the uploaded resume." });
+    console.error("❌ Upload Resume Error:", err.message || err);
+    return res.status(500).json({ error: "Failed to process and analyze resume." });
   }
 });
-
-module.exports = app;
