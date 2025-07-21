@@ -11,10 +11,10 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Set up file upload with memory storage
+// Set up file upload (PDF, image support)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// OpenAI setup (API key from Render env vars)
+// OpenAI setup (key from Render environment)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
