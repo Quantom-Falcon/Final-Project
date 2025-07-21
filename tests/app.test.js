@@ -7,7 +7,7 @@ describe("POST /api/upload-resume", () => {
     const res = await request(app)
       .post("/api/upload-resume")
       .field("jobDescription", "Looking for a frontend React engineer")
-      .attach("resumeFile", path.join(__dirname, "sample.pdf")); // <- make sure this file exists
+      .attach("resumeFile", path.join(__dirname, "sample.pdf"));
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty("improvedResume");
