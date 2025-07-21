@@ -7,15 +7,27 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Only initialize OpenAI if the key is available
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
+// ------------------------------------
+// 🤖 Rewrite Resume with OpenAI (or mock)
+// ------------------------------------
 app.post('/api/rewrite-resume', async (req, res) => {
   const { resume, job } = req.body;
 
   if (!resume || !job) {
     return res.status(400).json({ error: "Missing resume or job description." });
+  }
+
+  // If OpenAI is not available (e.g., in CI test), return mock
+  if (!openai) {
+    return res.json({
+      improvedResume: `🔧 [Mock GPT Response]\n\n${resume}\n\nOptimized for job: ${job.slice(0, 80)}...`
+    });
   }
 
   try {
