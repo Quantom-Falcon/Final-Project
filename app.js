@@ -7,14 +7,19 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Only initialize OpenAI if the key is available
+// Initialize OpenAI client only if key is set
+const apiKey = process.env.OPENAI_API_KEY;
 let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+if (apiKey && apiKey.startsWith("sk-")) {
+  openai = new OpenAI({ apiKey });
+  console.log("✅ OpenAI API key loaded");
+} else {
+  console.log("⚠️ OpenAI API key is missing or invalid. GPT calls will be skipped.");
 }
 
 // ------------------------------------
-// 🤖 Rewrite Resume with OpenAI (or mock)
+// 🤖 Rewrite Resume Endpoint
 // ------------------------------------
 app.post('/api/rewrite-resume', async (req, res) => {
   const { resume, job } = req.body;
@@ -23,16 +28,21 @@ app.post('/api/rewrite-resume', async (req, res) => {
     return res.status(400).json({ error: "Missing resume or job description." });
   }
 
-  // If OpenAI is not available (e.g., in CI test), return mock
+  // Use mock response if OpenAI is not configured
   if (!openai) {
+    console.log("⚠️ OpenAI client not initialized. Returning mock response.");
     return res.json({
-      improvedResume: `🔧 [Mock GPT Response]\n\n${resume}\n\nOptimized for job: ${job.slice(0, 80)}...`
+      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`
     });
   }
 
   try {
+    console.log("📤 Sending prompt to OpenAI...");
+
     const prompt = `
-You are an AI resume assistant. Rewrite the following resume to better match the job description. Focus on improving keyword alignment, skills, and phrasing — but keep the original experiences.
+You are an AI resume assistant. Rewrite the following resume to better match the job description.
+Focus on keyword alignment, skill enhancement, and phrasing.
+Keep the original experiences but make it more relevant and compelling.
 
 Resume:
 ${resume}
@@ -51,10 +61,12 @@ Rewritten Resume:
     });
 
     const improvedResume = completion.choices[0].message.content.trim();
+
+    console.log("✅ OpenAI returned improved resume.");
     res.json({ improvedResume });
 
   } catch (error) {
-    console.error("OpenAI error:", error);
+    console.error("❌ OpenAI error:", error);
     res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
   }
 });
