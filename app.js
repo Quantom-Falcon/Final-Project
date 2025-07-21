@@ -4,18 +4,13 @@ const { OpenAI } = require('openai');
 
 const app = express();
 
-// Middleware
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Initialize OpenAI with secret key from environment
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// ---------------------------
-// 🤖 Rewrite Resume Endpoint
-// ---------------------------
 app.post('/api/rewrite-resume', async (req, res) => {
   const { resume, job } = req.body;
 
@@ -24,8 +19,6 @@ app.post('/api/rewrite-resume', async (req, res) => {
   }
 
   try {
-    console.log("Calling OpenAI with resume and job description...");
-
     const prompt = `
 You are an AI resume assistant. Rewrite the following resume to better match the job description. Focus on improving keyword alignment, skills, and phrasing — but keep the original experiences.
 
@@ -46,12 +39,10 @@ Rewritten Resume:
     });
 
     const improvedResume = completion.choices[0].message.content.trim();
-
-    console.log("OpenAI responded with improved resume.");
     res.json({ improvedResume });
 
   } catch (error) {
-    console.error("OpenAI API error:", error);
+    console.error("OpenAI error:", error);
     res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
   }
 });
