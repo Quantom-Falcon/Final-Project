@@ -7,21 +7,21 @@ const { OpenAI } = require('openai');
 
 const app = express();
 
-// Setup static file serving
+// Serve static frontend
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Setup file upload
+// Set up file upload with memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize OpenAI
+// OpenAI setup (API key from Render env vars)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
 
 // ---------------------------
-// 📄 Upload Resume Endpoint
+// 📄 Upload Resume Endpoint (PDF, PNG, JPEG)
 // ---------------------------
 app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => {
   const file = req.file;
