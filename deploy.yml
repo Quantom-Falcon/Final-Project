@@ -24,4 +24,4 @@ jobs:
       run: npm test
 
     - name: Trigger Render Deploy Hook
-      run: curl -X GET https://api.render.com/deploy/srv-d1ip4vqdbo4c73f97iag?key=YXn-cqiGuD0
+      run: curl -X GET https://api.render.com/deploy/srv-d1tvimbe5dus73e25on0?key=7sXzaM8HyJo
