@@ -19,7 +19,7 @@ if (apiKey && apiKey.startsWith("sk-")) {
 }
 
 // ------------------------------------
-// 🤖 Rewrite Resume Endpoint
+// 🤖 Rewrite Resume + Feedback Endpoint
 // ------------------------------------
 app.post('/api/rewrite-resume', async (req, res) => {
   const { resume, job } = req.body;
@@ -32,7 +32,17 @@ app.post('/api/rewrite-resume', async (req, res) => {
   if (!openai) {
     console.log("⚠️ OpenAI client not initialized. Returning mock response.");
     return res.json({
-      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`
+      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`,
+      score: 65,
+      improvements: [
+        "Resume lacks specific job-related keywords.",
+        "Bullet points are not action-oriented."
+      ],
+      suggestions: [
+        "Add measurable results (e.g. 'Reduced load time by 30%')",
+        "Incorporate keywords from the job description like 'React' and 'Agile'",
+        "Use action verbs to start each bullet point"
+      ]
     });
   }
 
@@ -40,33 +50,57 @@ app.post('/api/rewrite-resume', async (req, res) => {
     console.log("📤 Sending prompt to OpenAI...");
 
     const prompt = `
-You are an AI resume assistant. Rewrite the following resume to better match the job description.
-Focus on keyword alignment, skill enhancement, and phrasing.
-Keep the original experiences but make it more relevant and compelling.
+You are an expert resume reviewer and improvement assistant.
+
+Please analyze and rewrite the following resume to better match the job description.
+
+Then, return a response in this exact JSON format (no explanation, no markdown):
+
+{
+  "improvedResume": "Rewritten resume...",
+  "score": 82,
+  "improvements": [
+    "Missing keywords",
+    "Too vague in experience section",
+    "No metrics used in achievements"
+  ],
+  "suggestions": [
+    "Include keywords from the job description like React and TypeScript",
+    "Add bullet points with measurable outcomes",
+    "Tailor the summary to the job’s main responsibilities"
+  ]
+}
 
 Resume:
 ${resume}
 
 Job Description:
 ${job}
-
-Rewritten Resume:
 `;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 1500
     });
 
-    const improvedResume = completion.choices[0].message.content.trim();
+    const content = completion.choices[0].message.content.trim();
 
-    console.log("✅ OpenAI returned improved resume.");
-    res.json({ improvedResume });
+    // Parse JSON safely
+    let result;
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error("❌ Failed to parse JSON from GPT:", parseError.message);
+      return res.status(500).json({ error: "OpenAI did not return valid JSON." });
+    }
+
+    console.log("✅ OpenAI returned structured response.");
+    res.json(result);
 
   } catch (error) {
-    console.error("❌ OpenAI error:", error);
+    console.error("❌ OpenAI error:", error.message);
     res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
   }
 });
