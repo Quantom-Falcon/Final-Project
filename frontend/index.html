@@ -2,147 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ResumeRev.AI – AI Resume Rewriter</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResumeRev.AI</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 40px auto;
-      max-width: 800px;
-      padding: 20px;
-      background: #f9f9f9;
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 700px;
+      margin: auto;
     }
-
-    form {
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-    }
-
     textarea {
       width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
       font-family: monospace;
-      margin-top: 6px;
-      margin-bottom: 20px;
-      padding: 10px;
-      resize: vertical;
     }
-
-    label {
-      font-weight: bold;
-      display: block;
-    }
-
-    input[type="file"] {
-      margin-bottom: 20px;
-    }
-
     button {
-      padding: 10px 18px;
-      background-color: #007bff;
-      color: white;
-      border: none;
+      padding: 0.75rem 1.5rem;
       font-size: 1rem;
-      border-radius: 4px;
-      cursor: pointer;
     }
-
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    #spinner {
-      display: none;
-      margin-top: 10px;
-      font-style: italic;
-      color: #555;
-    }
-
     pre {
-      background: #eee;
-      padding: 15px;
-      border-radius: 6px;
+      background: #f4f4f4;
+      padding: 1rem;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      margin-top: 2rem;
     }
   </style>
 </head>
 <body>
-  <h1>ResumeRev.AI</h1>
-  <p>Use AI to rewrite your resume for any job — upload or paste your resume below.</p>
+  <h1>🚀 ResumeRev.AI</h1>
+  <p>Paste your resume and a job description below. We'll make it better.</p>
 
-  <form id="resumeForm">
-    <label for="resume">Your Resume:</label>
-    <textarea id="resume" rows="10" placeholder="Paste your resume here..." required></textarea>
+  <form id="revForm">
+    <label>📝 Resume:</label><br />
+    <textarea id="resume" rows="10" required></textarea><br />
 
-    <label for="resumeUpload">Or upload a .txt resume:</label>
-    <input type="file" id="resumeUpload" accept=".txt" />
+    <label>💼 Job Description:</label><br />
+    <textarea id="job" rows="10" required></textarea><br />
 
-    <label for="job">Job Description:</label>
-    <textarea id="job" rows="10" placeholder="Paste the job description here..." required></textarea>
-
-    <button type="submit">Rewrite Resume</button>
-    <div id="spinner">⏳ Rewriting your resume... Please wait.</div>
+    <button type="submit">✨ Rewrite Resume</button>
   </form>
 
-  <h2>🔄 Rewritten Resume</h2>
   <pre id="output"></pre>
 
   <script>
-    const form = document.getElementById("resumeForm");
-    const output = document.getElementById("output");
-    const spinner = document.getElementById("spinner");
+    const form = document.getElementById('revForm');
+    const output = document.getElementById('output');
 
-    form.addEventListener("submit", async function (e) {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      output.textContent = '⏳ Processing...';
 
-      const resume = document.getElementById("resume").value.trim();
-      const job = document.getElementById("job").value.trim();
+      const res = await fetch('/api/rewrite-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume: document.getElementById('resume').value,
+          job: document.getElementById('job').value
+        })
+      });
 
-      if (!resume || !job) {
-        output.textContent = "⚠️ Please provide both resume and job description.";
-        return;
-      }
-
-      spinner.style.display = "block";
-      output.textContent = "";
-
-      try {
-        const res = await fetch("/api/rewrite-resume", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume, job })
-        });
-
-        const data = await res.json();
-        spinner.style.display = "none";
-
-        if (data.improvedResume) {
-          output.textContent = data.improvedResume;
-        } else {
-          output.textContent = `❌ Error: ${data.error || "Something went wrong."}`;
-        }
-      } catch (err) {
-        spinner.style.display = "none";
-        output.textContent = "❌ Failed to connect to the server.";
-        console.error(err);
-      }
-    });
-
-    // Handle .txt file upload
-    document.getElementById("resumeUpload").addEventListener("change", function () {
-      const file = this.files[0];
-      if (!file) return;
-
-      if (file.type !== "text/plain") {
-        alert("Please upload a .txt file");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        document.getElementById("resume").value = e.target.result;
-      };
-      reader.readAsText(file);
+      const data = await res.json();
+      output.textContent = data.improvedResume || data.error || 'Something went wrong.';
     });
   </script>
 </body>
