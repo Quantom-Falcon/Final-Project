@@ -21,18 +21,20 @@
       padding: 0.75rem 1.5rem;
       font-size: 1rem;
     }
-    pre {
+    pre, ul {
       background: #f4f4f4;
       padding: 1rem;
-      white-space: pre-wrap;
       border: 1px solid #ccc;
+      margin-top: 1rem;
+    }
+    h3 {
       margin-top: 2rem;
     }
   </style>
 </head>
 <body>
   <h1>🚀 ResumeRev.AI</h1>
-  <p>Paste your resume and a job description below. We'll make it better.</p>
+  <p>Paste your resume and a job description below. We'll rewrite it and give you feedback.</p>
 
   <form id="revForm">
     <label>📝 Resume:</label><br />
@@ -44,15 +46,36 @@
     <button type="submit">✨ Rewrite Resume</button>
   </form>
 
-  <pre id="output"></pre>
+  <div id="results" style="display:none;">
+    <h3>📄 Rewritten Resume:</h3>
+    <pre id="improvedResume"></pre>
+
+    <h3>🎯 Resume Score:</h3>
+    <pre id="score"></pre>
+
+    <h3>⚠️ Improvement Areas:</h3>
+    <ul id="improvements"></ul>
+
+    <h3>💡 Suggestions:</h3>
+    <ul id="suggestions"></ul>
+  </div>
 
   <script>
     const form = document.getElementById('revForm');
-    const output = document.getElementById('output');
+    const results = document.getElementById('results');
+    const improvedResumeEl = document.getElementById('improvedResume');
+    const scoreEl = document.getElementById('score');
+    const improvementsEl = document.getElementById('improvements');
+    const suggestionsEl = document.getElementById('suggestions');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      output.textContent = '⏳ Processing...';
+
+      improvedResumeEl.textContent = '⏳ Processing...';
+      scoreEl.textContent = '';
+      improvementsEl.innerHTML = '';
+      suggestionsEl.innerHTML = '';
+      results.style.display = 'block';
 
       const res = await fetch('/api/rewrite-resume', {
         method: 'POST',
@@ -64,7 +87,26 @@
       });
 
       const data = await res.json();
-      output.textContent = data.improvedResume || data.error || 'Something went wrong.';
+
+      if (data.error) {
+        improvedResumeEl.textContent = `❌ ${data.error}`;
+        return;
+      }
+
+      improvedResumeEl.textContent = data.improvedResume || 'No resume returned.';
+      scoreEl.textContent = data.score !== undefined ? `${data.score}/100` : 'N/A';
+
+      (data.improvements || []).forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        improvementsEl.appendChild(li);
+      });
+
+      (data.suggestions || []).forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        suggestionsEl.appendChild(li);
+      });
     });
   </script>
 </body>
