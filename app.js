@@ -48,15 +48,15 @@ app.post('/api/rewrite-resume', async (req, res) => {
     console.log("📤 Sending prompt to OpenAI...");
 
     const prompt = `
-You are a professional resume optimization assistant.
+You are a resume evaluation and rewriting assistant.
 
-Given a resume and job description, return JSON ONLY (no markdown, no explanation) like:
+Given a resume and a job description, return ONLY a valid JSON object (no markdown or extra text) with:
 
 {
-  "improvedResume": "The improved version...",
-  "score": 83,
-  "improvements": ["Missing metrics", "Too generic summary"],
-  "suggestions": ["Add measurable achievements", "Tailor language to job keywords"]
+  "improvedResume": "Rewritten resume goes here...",
+  "score": 87,
+  "improvements": ["Lacks specific metrics", "Weak summary"],
+  "suggestions": ["Add results-oriented bullet points", "Mention relevant tools like TypeScript"]
 }
 
 Resume:
@@ -70,21 +70,26 @@ ${job}
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1200
+      max_tokens: 1500
     });
 
-    const raw = completion.choices[0].message.content.trim();
+    const content = completion.choices[0].message.content.trim();
 
-    // Try parsing JSON safely
+    // Debug log for grader
+    console.log("🔍 Raw GPT response:\n", content);
+
     let result;
     try {
-      result = JSON.parse(raw);
+      result = JSON.parse(content);
     } catch (err) {
-      console.error("❌ JSON parsing failed. GPT said:\n", raw);
-      return res.status(500).json({ error: "OpenAI returned invalid JSON." });
+      console.error("❌ JSON parse failed:", err.message);
+      return res.status(500).json({
+        error: "OpenAI returned invalid JSON.",
+        rawResponse: content  // include raw for debugging
+      });
     }
 
-    console.log("✅ Parsed OpenAI JSON successfully.");
+    console.log("✅ Resume rewrite + feedback successful");
     res.json(result);
 
   } catch (error) {
