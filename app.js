@@ -7,7 +7,6 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
 
-// Initialize OpenAI client only if key is set
 const apiKey = process.env.OPENAI_API_KEY;
 let openai = null;
 
@@ -28,9 +27,8 @@ app.post('/api/rewrite-resume', async (req, res) => {
     return res.status(400).json({ error: "Missing resume or job description." });
   }
 
-  // Use mock response if OpenAI is not configured
   if (!openai) {
-    console.log("⚠️ OpenAI client not initialized. Returning mock response.");
+    console.log("⚠️ OpenAI not initialized. Using mock response.");
     return res.json({
       improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`,
       score: 65,
@@ -50,25 +48,15 @@ app.post('/api/rewrite-resume', async (req, res) => {
     console.log("📤 Sending prompt to OpenAI...");
 
     const prompt = `
-You are an expert resume reviewer and improvement assistant.
+You are a professional resume optimization assistant.
 
-Please analyze and rewrite the following resume to better match the job description.
-
-Then, return a response in this exact JSON format (no explanation, no markdown):
+Given a resume and job description, return JSON ONLY (no markdown, no explanation) like:
 
 {
-  "improvedResume": "Rewritten resume...",
-  "score": 82,
-  "improvements": [
-    "Missing keywords",
-    "Too vague in experience section",
-    "No metrics used in achievements"
-  ],
-  "suggestions": [
-    "Include keywords from the job description like React and TypeScript",
-    "Add bullet points with measurable outcomes",
-    "Tailor the summary to the job’s main responsibilities"
-  ]
+  "improvedResume": "The improved version...",
+  "score": 83,
+  "improvements": ["Missing metrics", "Too generic summary"],
+  "suggestions": ["Add measurable achievements", "Tailor language to job keywords"]
 }
 
 Resume:
@@ -82,25 +70,25 @@ ${job}
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1500
+      max_tokens: 1200
     });
 
-    const content = completion.choices[0].message.content.trim();
+    const raw = completion.choices[0].message.content.trim();
 
-    // Parse JSON safely
+    // Try parsing JSON safely
     let result;
     try {
-      result = JSON.parse(content);
-    } catch (parseError) {
-      console.error("❌ Failed to parse JSON from GPT:", parseError.message);
-      return res.status(500).json({ error: "OpenAI did not return valid JSON." });
+      result = JSON.parse(raw);
+    } catch (err) {
+      console.error("❌ JSON parsing failed. GPT said:\n", raw);
+      return res.status(500).json({ error: "OpenAI returned invalid JSON." });
     }
 
-    console.log("✅ OpenAI returned structured response.");
+    console.log("✅ Parsed OpenAI JSON successfully.");
     res.json(result);
 
   } catch (error) {
-    console.error("❌ OpenAI error:", error.message);
+    console.error("❌ OpenAI error:", error?.response?.data || error.message || error);
     res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
   }
 });
