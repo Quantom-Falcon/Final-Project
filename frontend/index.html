@@ -4,49 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ResumeRev.AI</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 2rem;
-      max-width: 700px;
-      margin: auto;
-    }
-    textarea {
-      width: 100%;
-      margin-bottom: 1rem;
-      padding: 0.75rem;
-      font-family: monospace;
-    }
-    button {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-    }
-    pre, ul {
-      background: #f4f4f4;
-      padding: 1rem;
-      border: 1px solid #ccc;
-      margin-top: 1rem;
-    }
-    h3 {
-      margin-top: 2rem;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>🚀 ResumeRev.AI</h1>
-  <p>Paste your resume and a job description, or upload a PDF resume to get instant AI feedback.</p>
+  <p>Upload your PDF resume and paste a job description to get instant AI feedback.</p>
 
   <form id="revForm">
-    <label>📝 Resume:</label><br />
-    <textarea id="resume" rows="10"></textarea><br />
-
     <label>💼 Job Description:</label><br />
-    <textarea id="job" rows="10" required></textarea><br />
+    <textarea id="job" rows="8" required></textarea><br />
 
-    <label>📄 Or Upload Resume (PDF):</label><br />
-    <input type="file" id="resumeFile" accept=".pdf" /><br /><br />
+    <label>📄 Upload Resume (PDF only):</label><br />
+    <input type="file" id="resumeFile" accept=".pdf" required /><br /><br />
 
-    <button type="submit">✨ Rewrite Resume</button>
+    <button type="submit">✨ Get Resume Feedback</button>
   </form>
 
   <div id="results" style="display:none;">
@@ -71,18 +42,15 @@
     const improvementsEl = document.getElementById('improvements');
     const suggestionsEl = document.getElementById('suggestions');
     const resumeFileInput = document.getElementById('resumeFile');
-    const resumeTextarea = document.getElementById('resume');
+    const jobTextarea = document.getElementById('job');
 
-    // Handle PDF upload and auto-fill resume textarea
-    resumeFileInput.addEventListener('change', async () => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
       const file = resumeFileInput.files[0];
-      const job = document.getElementById('job').value;
-      if (!file) return;
-
-      // Optional: Require job description for upload too
-      if (!job) {
-        alert('Please enter a job description before uploading a PDF.');
-        resumeFileInput.value = '';
+      const job = jobTextarea.value.trim();
+      if (!file || !job) {
+        alert('Please upload a PDF resume and enter a job description.');
         return;
       }
 
@@ -106,8 +74,7 @@
         improvedResumeEl.textContent = `❌ ${data.error}`;
         return;
       }
-      // Optionally fill textarea with PDF-extracted text (disabled for now)
-      // resumeTextarea.value = data.originalResume || '';
+
       improvedResumeEl.textContent = data.improvedResume || 'No resume returned.';
       scoreEl.textContent = data.score !== undefined ? `${data.score}/100` : 'N/A';
 
@@ -122,33 +89,10 @@
         li.textContent = item;
         suggestionsEl.appendChild(li);
       });
+
+      resumeFileInput.value = '';
+      jobTextarea.value = '';
     });
-
-    // Handle form submit (pasted resume)
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      // If user uploaded PDF, use that flow, not pasted text
-      if (resumeFileInput.files.length > 0) {
-        return; // PDF upload already handled by change event
-      }
-
-      improvedResumeEl.textContent = '⏳ Processing...';
-      scoreEl.textContent = '';
-      improvementsEl.innerHTML = '';
-      suggestionsEl.innerHTML = '';
-      results.style.display = 'block';
-
-      const res = await fetch('/api/rewrite-resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume: resumeTextarea.value,
-          job: document.getElementById('job').value
-        })
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        improvedResumeEl.textContent = `❌ ${data.error}`;
+  </script>
+</body>
+</html>
