@@ -1,8 +1,11 @@
 const express = require('express');
 const path = require('path');
 const { OpenAI } = require('openai');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
 
 const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.static(path.join(__dirname, 'frontend')));
 app.use(express.json());
@@ -18,7 +21,7 @@ if (apiKey && apiKey.startsWith("sk-")) {
 }
 
 // ------------------------------------
-// 🤖 Rewrite Resume + Feedback Endpoint
+// 📝 Rewrite Resume (Plain Text Input)
 // ------------------------------------
 app.post('/api/rewrite-resume', async (req, res) => {
   const { resume, job } = req.body;
@@ -27,27 +30,50 @@ app.post('/api/rewrite-resume', async (req, res) => {
     return res.status(400).json({ error: "Missing resume or job description." });
   }
 
+  return await handleRewrite(resume, job, res);
+});
+
+// ------------------------------------
+// 📄 Upload PDF Resume + Job Description
+// ------------------------------------
+app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => {
+  const file = req.file;
+  const job = req.body.job;
+
+  if (!file || !job) {
+    return res.status(400).json({ error: "Missing PDF resume or job description." });
+  }
+
+  try {
+    const pdfData = await pdfParse(file.buffer);
+    const extractedText = pdfData.text.trim();
+    if (!extractedText) {
+      return res.status(400).json({ error: "Could not extract text from the PDF." });
+    }
+
+    return await handleRewrite(extractedText, job, res);
+  } catch (err) {
+    console.error("❌ PDF extraction error:", err.message);
+    return res.status(500).json({ error: "Failed to extract resume text from PDF." });
+  }
+});
+
+// ------------------------------------
+// ✨ Shared GPT Handler Function
+// ------------------------------------
+async function handleRewrite(resume, job, res) {
   if (!openai) {
     console.log("⚠️ OpenAI not initialized. Using mock response.");
     return res.json({
-      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}\n\n(Tailored to job: ${job.slice(0, 80)}...)`,
+      improvedResume: `🔧 [MOCK RESPONSE]\n\n${resume}`,
       score: 65,
-      improvements: [
-        "Resume lacks specific job-related keywords.",
-        "Bullet points are not action-oriented."
-      ],
-      suggestions: [
-        "Add measurable results (e.g. 'Reduced load time by 30%')",
-        "Incorporate keywords from the job description like 'React' and 'Agile'",
-        "Use action verbs to start each bullet point"
-      ]
+      improvements: ["Resume lacks job-specific keywords", "No measurable results"],
+      suggestions: ["Add action verbs", "Include tools from job description", "Quantify accomplishments"]
     });
   }
 
   try {
-    console.log("📤 Sending prompt to OpenAI...");
-
-const prompt = `
+    const prompt = `
 You are a professional resume optimization assistant.
 
 Analyze the resume in the context of the job description.
@@ -73,7 +99,6 @@ Job Description:
 ${job}
 `;
 
-
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
@@ -82,8 +107,6 @@ ${job}
     });
 
     const content = completion.choices[0].message.content.trim();
-
-    // Debug log for grader
     console.log("🔍 Raw GPT response:\n", content);
 
     let result;
@@ -93,17 +116,16 @@ ${job}
       console.error("❌ JSON parse failed:", err.message);
       return res.status(500).json({
         error: "OpenAI returned invalid JSON.",
-        rawResponse: content  // include raw for debugging
+        rawResponse: content
       });
     }
 
     console.log("✅ Resume rewrite + feedback successful");
     res.json(result);
-
   } catch (error) {
     console.error("❌ OpenAI error:", error?.response?.data || error.message || error);
-    res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
+    return res.status(500).json({ error: "Failed to rewrite resume using OpenAI." });
   }
-});
+}
 
 module.exports = app;
