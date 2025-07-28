@@ -34,14 +34,17 @@
 </head>
 <body>
   <h1>🚀 ResumeRev.AI</h1>
-  <p>Paste your resume and a job description below. We'll rewrite it and give you feedback.</p>
+  <p>Paste your resume and a job description, or upload a PDF resume to get instant AI feedback.</p>
 
   <form id="revForm">
     <label>📝 Resume:</label><br />
-    <textarea id="resume" rows="10" required></textarea><br />
+    <textarea id="resume" rows="10"></textarea><br />
 
     <label>💼 Job Description:</label><br />
     <textarea id="job" rows="10" required></textarea><br />
+
+    <label>📄 Or Upload Resume (PDF):</label><br />
+    <input type="file" id="resumeFile" accept=".pdf" /><br /><br />
 
     <button type="submit">✨ Rewrite Resume</button>
   </form>
@@ -67,32 +70,44 @@
     const scoreEl = document.getElementById('score');
     const improvementsEl = document.getElementById('improvements');
     const suggestionsEl = document.getElementById('suggestions');
+    const resumeFileInput = document.getElementById('resumeFile');
+    const resumeTextarea = document.getElementById('resume');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    // Handle PDF upload and auto-fill resume textarea
+    resumeFileInput.addEventListener('change', async () => {
+      const file = resumeFileInput.files[0];
+      const job = document.getElementById('job').value;
+      if (!file) return;
 
-      improvedResumeEl.textContent = '⏳ Processing...';
+      // Optional: Require job description for upload too
+      if (!job) {
+        alert('Please enter a job description before uploading a PDF.');
+        resumeFileInput.value = '';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('resumeFile', file);
+      formData.append('job', job);
+
+      improvedResumeEl.textContent = '⏳ Extracting PDF and getting feedback...';
       scoreEl.textContent = '';
       improvementsEl.innerHTML = '';
       suggestionsEl.innerHTML = '';
       results.style.display = 'block';
 
-      const res = await fetch('/api/rewrite-resume', {
+      const res = await fetch('/api/upload-resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume: document.getElementById('resume').value,
-          job: document.getElementById('job').value
-        })
+        body: formData
       });
-
       const data = await res.json();
 
       if (data.error) {
         improvedResumeEl.textContent = `❌ ${data.error}`;
         return;
       }
-
+      // Optionally fill textarea with PDF-extracted text (disabled for now)
+      // resumeTextarea.value = data.originalResume || '';
       improvedResumeEl.textContent = data.improvedResume || 'No resume returned.';
       scoreEl.textContent = data.score !== undefined ? `${data.score}/100` : 'N/A';
 
@@ -108,6 +123,32 @@
         suggestionsEl.appendChild(li);
       });
     });
-  </script>
-</body>
-</html>
+
+    // Handle form submit (pasted resume)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // If user uploaded PDF, use that flow, not pasted text
+      if (resumeFileInput.files.length > 0) {
+        return; // PDF upload already handled by change event
+      }
+
+      improvedResumeEl.textContent = '⏳ Processing...';
+      scoreEl.textContent = '';
+      improvementsEl.innerHTML = '';
+      suggestionsEl.innerHTML = '';
+      results.style.display = 'block';
+
+      const res = await fetch('/api/rewrite-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume: resumeTextarea.value,
+          job: document.getElementById('job').value
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        improvedResumeEl.textContent = `❌ ${data.error}`;
