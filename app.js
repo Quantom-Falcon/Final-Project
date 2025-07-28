@@ -47,24 +47,32 @@ app.post('/api/rewrite-resume', async (req, res) => {
   try {
     console.log("📤 Sending prompt to OpenAI...");
 
-    const prompt = `
-You are a resume evaluation and rewriting assistant.
+const prompt = `
+You are a professional resume optimization assistant.
 
-Given a resume and a job description, return ONLY a valid JSON object (no markdown or extra text) with:
+Analyze the resume in the context of the job description.
 
+1. Rewrite the resume to better match the job description.
+2. Give a score from 0 to 100 based on how well it fits the job.
+3. List 3 specific improvement areas based on what is lacking.
+4. Provide 3 concrete suggestions to improve the resume.
+
+Return ONLY a valid JSON object like this:
 {
-  "improvedResume": "Rewritten resume goes here...",
+  "improvedResume": "...",
   "score": 87,
-  "improvements": ["Lacks specific metrics", "Weak summary"],
-  "suggestions": ["Add results-oriented bullet points", "Mention relevant tools like TypeScript"]
+  "improvements": ["..."],
+  "suggestions": ["..."]
 }
 
+Do not return any explanations or extra formatting. Output only the JSON.
 Resume:
 ${resume}
 
 Job Description:
 ${job}
 `;
+
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
