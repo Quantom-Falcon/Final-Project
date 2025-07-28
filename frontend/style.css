@@ -6,9 +6,35 @@ body {
   background: #f9f9f9;
 }
 
+h1, h2, h3 {
+  color: #333;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+form {
+  margin-bottom: 2rem;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.2em;
+}
+
 textarea {
   width: 100%;
   font-family: monospace;
+  margin-bottom: 1em;
+  padding: 0.7em;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background: #f5f7fa;
+  min-height: 90px;
+}
+
+input[type="file"] {
+  margin-top: 0.5em;
   margin-bottom: 1em;
 }
 
@@ -18,9 +44,42 @@ button {
   color: white;
   border: none;
   font-size: 1rem;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-h1, h2 {
-  color: #333;
+button:hover {
+  background-color: #0056b3;
+}
+
+pre, ul {
+  background: #f4f4f4;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  margin-top: 1rem;
+  border-radius: 6px;
+  font-size: 1.05em;
+}
+
+ul {
+  list-style-type: disc;
+  padding-left: 2em;
+}
+
+#results {
+  margin-top: 2em;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 8px;
+    max-width: 99vw;
+  }
+  textarea {
+    font-size: 1em;
+  }
+  pre, ul {
+    font-size: 1em;
+  }
 }
